@@ -1,0 +1,28 @@
+#!groovy
+node ('back-end-slave') {
+    ws("workspace/${env.JOB_NAME}/${env.BRANCH_NAME}".replace('%2F', '_')) {
+        properties([
+            disableConcurrentBuilds()
+        ])
+        stage('CheckoutSCM') {
+            checkout scm
+            echo 'Source code checked out...'
+        }
+        stage('Packing') {
+            echo 'Packing to jar file with Maven...'
+            sh 'mvn clean package'
+        }
+        stage('Deploy') {
+            echo 'Building image...'
+            sh 'docker build -t demo-app .'
+            echo 'List containers...'
+            sh 'docker container ls -a'
+            echo 'Remove old one...'
+            sh 'docker rm -f demo-app'
+            echo 'Deploying new one to host...'
+            sh 'docker run -d -p 8088:8088 --name demo-app demo-app'
+            echo 'Cleaning workspace...'
+            deleteDir()
+        }
+    }
+}
